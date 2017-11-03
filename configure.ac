@@ -130,14 +130,15 @@ AM_COND_IF([ENABLE_TOOLS], [
 
 AC_ARG_ENABLE([proxy_server], AS_HELP_STRING([--enable-proxy-server], [Enable proxy server ability]), proxy_server=yes, proxy_server=no)
 AM_CONDITIONAL(ENABLE_PROXY_SERVER, test x$proxy_server == xyes)
-AM_COND_IF([ENABLE_PROXY_SERVER], [
-	AC_CHECK_LIB(restbed, exit,, AC_MSG_ERROR([Missing restbed files]))
-	PKG_CHECK_MODULES([Jsoncpp], [jsoncpp >= 1.7.4])
-	CPPFLAGS+=" -DOPENDHT_PROXY_SERVER=true -ljsoncpp -lrestbed"
+AC_ARG_ENABLE([proxy_server_identity], AS_HELP_STRING([--enable-proxy-server-identity],
+	[Enable proxy server ability]), proxy_server_identity=yes, proxy_server_identity=no)
+AM_CONDITIONAL(ENABLE_PROXY_SERVER_IDENTITY, test x$proxy_server_identity == xyes)
+AC_ARG_ENABLE([proxy_client], AS_HELP_STRING([--enable-proxy-client], [Enable proxy client ability]), proxy_client=yes, proxy_client=no)
+AM_CONDITIONAL(ENABLE_PROXY_CLIENT, test x$proxy_client == xyes)
 
-	AC_ARG_ENABLE([proxy_server_identity], AS_HELP_STRING([--enable-proxy-server-identity],
-		[Enable proxy server ability]), proxy_server_identity=yes, proxy_server_identity=no)
-	AM_CONDITIONAL(ENABLE_PROXY_SERVER_IDENTITY, test x$proxy_server_identity == xyes)
+AM_COND_IF([ENABLE_PROXY_SERVER], [
+	CPPFLAGS+=" -DOPENDHT_PROXY_SERVER=true"
+
 	AM_COND_IF([ENABLE_PROXY_SERVER_IDENTITY], [
 		CPPFLAGS+=" -DOPENDHT_PROXY_SERVER_IDENTITY=true"
 	], [
@@ -146,6 +147,20 @@ AM_COND_IF([ENABLE_PROXY_SERVER], [
 ], [
 	CPPFLAGS+=" -DOPENDHT_PROXY_SERVER=false"
 ])
+
+AM_COND_IF([ENABLE_PROXY_CLIENT], [
+	CPPFLAGS+=" -DOPENDHT_PROXY_CLIENT=true"
+], [
+	CPPFLAGS+=" -DOPENDHT_PROXY_CLIENT=false"
+])
+
+AM_CONDITIONAL(PROXY_CLIENT_OR_SERVER, test x$proxy_client == xyes | test x$proxy_server == xyes)
+AM_COND_IF([PROXY_CLIENT_OR_SERVER], [
+	AC_CHECK_LIB(restbed, exit,, AC_MSG_ERROR([Missing restbed files]))
+	PKG_CHECK_MODULES([Jsoncpp], [jsoncpp >= 1.7.4])
+	CPPFLAGS="${CPPFLAGS} ${Jsoncpp_CFLAGS}"
+	LDFLAGS="${LDFLAGS} ${Jsoncpp_LIBS} -lrestbed"
+], [])
 
 
 AC_CONFIG_FILES([doc/Doxyfile doc/Makefile])
