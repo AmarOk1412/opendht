@@ -105,7 +105,6 @@ DhtProxyClient::isRunning(sa_family_t af) const
     }
 }
 
-
 void
 DhtProxyClient::get(const InfoHash& key, GetCallback cb, DoneCallback donecb,
                     Value::Filter&& filter, Where&& where)
