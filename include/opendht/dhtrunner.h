@@ -410,6 +410,18 @@ private:
     std::unique_ptr<SecureDht> dht_via_proxy_;
     Config config_;
 #endif // OPENDHT_PROXY_CLIENT
+    struct Listener {
+        size_t globalToken;
+        size_t tokenClassicDht;
+        size_t tokenProxyDht;
+        GetCallback gcb;
+        InfoHash hash;
+        Value::Filter f;
+        Where w;
+    };
+    std::vector<std::unique_ptr<Listener>> listeners_ {};
+    size_t listener_token_ {1};
+
     mutable std::mutex dht_mtx {};
     std::thread dht_thread {};
     std::condition_variable cv {};

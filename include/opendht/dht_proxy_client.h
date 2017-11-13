@@ -135,13 +135,6 @@ public:
 
     std::vector<SockAddr> getPublicAddress(sa_family_t family = 0);
 
-
-    /**
-     * TODO
-     * NOTE: For now, there is no endpoint in the DhtProxyServer to do the following methods.
-     * It will come in another version.
-     */
-
     /**
      * Listen on the network for any changes involving a specified hash.
      * The node will register to receive updates from relevent nodes when
@@ -149,11 +142,18 @@ public:
      *
      * @return a token to cancel the listener later.
      */
-    virtual size_t listen(const InfoHash&, GetCallback, Value::Filter&&={}, Where&&={}) { return 0; };
+    virtual size_t listen(const InfoHash&, GetCallback, Value::Filter&&={}, Where&&={});
     virtual size_t listen(const InfoHash& key, GetCallbackSimple cb, Value::Filter f={}, Where w = {}) {
         return listen(key, bindGetCb(cb), std::forward<Value::Filter>(f), std::forward<Where>(w));
     }
-    virtual bool cancelListen(const InfoHash&, size_t /*token*/) { return false; }
+
+
+    /**
+     * TODO
+     * NOTE: For now, there is no endpoint in the DhtProxyServer to do the following methods.
+     * It will come in another version.
+     */
+    virtual bool cancelListen(const InfoHash&, size_t token);
 
     /**
      * Similar to Dht::get, but sends a Query to filter data remotely.
@@ -257,6 +257,7 @@ public:
     }
 
     time_point periodic(const uint8_t*, size_t, const SockAddr&) {
+        // The DhtProxyClient doesn't use NetworkEngine, so here, we have nothing to do for now.
         scheduler.syncTime();
         return scheduler.run();
     }
@@ -271,6 +272,10 @@ private:
      */
     void getConnectivityStatus();
     /**
+     * cancel all Listeners
+     */
+    void cancelAllListeners();
+    /**
      * cancel all Operations
      */
     void cancelAllOperations();
@@ -279,6 +284,18 @@ private:
     NodeStatus statusIpv6_ {NodeStatus::Disconnected};
 
     InfoHash myid {};
+
+    struct Listener
+    {
+        size_t token;
+        std::shared_ptr<restbed::Request> req;
+        std::string key;
+        GetCallback cb;
+        Value::Filter filterChain;
+        std::unique_ptr<std::thread> thread;
+    };
+    std::vector<Listener> listeners_;
+    size_t listener_token_ {0};
     struct Operation
     {
         std::shared_ptr<restbed::Request> req;
@@ -287,8 +304,13 @@ private:
     std::vector<Operation> operations_;
 
     Scheduler scheduler;
-    Sp<Scheduler::Job> nextNodesConfirmation {};
+    Sp<Scheduler::Job> nextProxyConfirmation {};
+    Sp<Scheduler::Job> nextConnectivityConfirmation {};
     void confirmProxy();
+    void confirmConnectivity();
+    // TODO doxygen
+    void restartListeners();
+    void listenWorker();
 };
 
 }

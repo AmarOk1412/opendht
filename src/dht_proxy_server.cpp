@@ -70,6 +70,7 @@ DhtProxyServer::DhtProxyServer(std::shared_ptr<DhtRunner> dht, in_port_t port)
         std::chrono::milliseconds timeout(std::numeric_limits<int>::max());
         settings->set_connection_timeout(timeout); // there is a timeout, but really huge
         settings->set_port(port);
+        settings->set_worker_limit( 8 ); // TODO get max threads
         try {
             service_->start(settings);
         } catch(std::system_error& e) {
@@ -78,22 +79,22 @@ DhtProxyServer::DhtProxyServer(std::shared_ptr<DhtRunner> dht, in_port_t port)
     });
 
     listenThread_ = std::thread([this]() {
-        auto stop = false;
-        while (!stop) {
-            auto listener = currentListeners_.begin();
-            while (listener != currentListeners_.end()) {
-                if (listener->session->is_closed() && dht_) {
-                    dht_->cancelListen(listener->hash, std::move(listener->token));
-                    // Remove listener if unused
-                    listener = currentListeners_.erase(listener);
-                } else {
-                     ++listener;
-                }
+        while (!service_->is_up() && !stopListeners) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+        while (service_->is_up()  && !stopListeners) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+        auto listener = currentListeners_.begin();
+        while (listener != currentListeners_.end()) {
+            if (dht_) {
+                // TODO/FIX listener->session is not correctly close, so a crash will occurs.
+                dht_->cancelListen(listener->hash, std::move(listener->token));
+                // Remove listener if unused
+                listener = currentListeners_.erase(listener);
+            } else {
+                 ++listener;
             }
-            //NOTE: When supports restbed 5.0: service_->is_up() and remove stopListeners
-            stop = stopListeners;
-            if (!stop)
-                std::this_thread::sleep_for(std::chrono::seconds(1));
         }
     });
 }
