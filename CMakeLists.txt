@@ -132,6 +132,9 @@ list (APPEND opendht_SOURCES
     src/dhtrunner.cpp
     src/indexation/pht.cpp
     src/log.cpp
+    src/dht_proxy_client.cpp
+    src/base64.cpp
+    src/base64.h
 )
 
 list (APPEND opendht_HEADERS
@@ -157,6 +160,7 @@ list (APPEND opendht_HEADERS
     include/opendht/log_enable.h
     include/opendht.h
     include/opendht/indexation/pht.h
+    include/opendht/dht_proxy_client.h
 )
 
 if (OPENDHT_PROXY_SERVER)
@@ -179,10 +183,8 @@ endif ()
 if (OPENDHT_PROXY_CLIENT)
   add_definitions(-DOPENDHT_PROXY_CLIENT=true)
   list (APPEND opendht_HEADERS
-    include/opendht/dht_proxy_client.h
   )
   list (APPEND opendht_SOURCES
-    src/dht_proxy_client.cpp
   )
 else ()
   add_definitions(-DOPENDHT_PROXY_CLIENT=false)
@@ -190,7 +192,6 @@ endif ()
 
 if (OPENDHT_PROXY_SERVER OR OPENDHT_PROXY_CLIENT)
   list (APPEND opendht_SOURCES
-    src/base64.h
     src/base64.cpp
   )
 endif ()

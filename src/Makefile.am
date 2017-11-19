@@ -24,7 +24,7 @@ libopendht_la_SOURCES  = \
         dhtrunner.cpp \
         default_types.cpp \
         indexation/pht.cpp \
-        log.cpp
+        log.cpp base64.h base64.cpp dht_proxy_server.cpp
 
 if WIN32
 libopendht_la_SOURCES += rng.cpp
@@ -52,7 +52,8 @@ nobase_include_HEADERS = \
         ../include/opendht/log.h \
         ../include/opendht/log_enable.h \
         ../include/opendht/rng.h \
-        ../include/opendht/indexation/pht.h
+        ../include/opendht/indexation/pht.h \
+        ../include/opendht/dht_proxy_client.h
 
 if ENABLE_PROXY_SERVER
 libopendht_la_SOURCES += base64.h base64.cpp dht_proxy_server.cpp

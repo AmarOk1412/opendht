@@ -22,6 +22,8 @@
 #if OPENDHT_PROXY_SERVER
 #include "opendht/dht_proxy_server.h"
 #endif
+#include "opendht/dht_interface.h"
+#include "opendht/dht_proxy_client.h"
 #include "opendht/log.h"
 #include "opendht/default_types.h"
 #include "opendht/indexation/pht.h"

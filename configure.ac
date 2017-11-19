@@ -12,6 +12,9 @@ AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CANONICAL_HOST
 
+AC_CHECK_LIB(restbed, exit,, AC_MSG_ERROR([Missing restbed files]))
+PKG_CHECK_MODULES([Jsoncpp], [jsoncpp >= 1.7.4])
+
 AC_SUBST(OPENDHT_MAJOR_VERSION, opendht_major_version)
 AC_SUBST(OPENDHT_MINOR_VERSION, opendht_minor_version)
 AC_SUBST(OPENDHT_PATCH_VERSION, opendht_patch_version)
@@ -75,7 +78,7 @@ case "${host_os}" in
     AC_DEFINE([_XOPEN_SOURCE], [700], [POSIX and XPG 7th edition])
     AC_DEFINE([_XOPEN_SOURCE_EXTENDED], [1], [XPG things and X/Open Unix extensions.])
     AC_DEFINE([_BSD_SOURCE], [1], [ISO C, POSIX, and 4.3BSD things.])
-    LDFLAGS="${LDFLAGS} -lws2_32"
+    LDFLAGS="${LDFLAGS} -lws2_32 ${Jsoncpp_LIBS} -lrestbed"
     AC_SUBST(WINDOWS_ARCH)
     AC_SUBST(PROGRAMFILES)
     ;;
@@ -145,22 +148,17 @@ AM_COND_IF([ENABLE_PROXY_SERVER], [
 		CPPFLAGS+=" -DOPENDHT_PROXY_SERVER_IDENTITY=false"
 	])
 ], [
-	CPPFLAGS+=" -DOPENDHT_PROXY_SERVER=false"
+	CPPFLAGS+=" -DOPENDHT_PROXY_SERVER=false ${Jsoncpp_CFLAGS}"
 ])
 
 AM_COND_IF([ENABLE_PROXY_CLIENT], [
 	CPPFLAGS+=" -DOPENDHT_PROXY_CLIENT=true"
 ], [
-	CPPFLAGS+=" -DOPENDHT_PROXY_CLIENT=false"
+	CPPFLAGS+=" -DOPENDHT_PROXY_CLIENT=false ${Jsoncpp_CFLAGS}"
 ])
 
 AM_CONDITIONAL(PROXY_CLIENT_OR_SERVER, test x$proxy_client == xyes | test x$proxy_server == xyes)
-AM_COND_IF([PROXY_CLIENT_OR_SERVER], [
-	AC_CHECK_LIB(restbed, exit,, AC_MSG_ERROR([Missing restbed files]))
-	PKG_CHECK_MODULES([Jsoncpp], [jsoncpp >= 1.7.4])
-	CPPFLAGS="${CPPFLAGS} ${Jsoncpp_CFLAGS}"
-	LDFLAGS="${LDFLAGS} ${Jsoncpp_LIBS} -lrestbed"
-], [])
+AM_COND_IF([PROXY_CLIENT_OR_SERVER], [], [])
 
 
 AC_CONFIG_FILES([doc/Doxyfile doc/Makefile])

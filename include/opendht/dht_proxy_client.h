@@ -16,11 +16,10 @@
  *  along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#if OPENDHT_PROXY_SERVER
-
 #pragma once
 
 #include <thread>
+#include <json/json.h>
 
 #include "callbacks.h"
 #include "def.h"
@@ -314,5 +313,3 @@ private:
 };
 
 }
-
-#endif // OPENDHT_PROXY_CLIENT

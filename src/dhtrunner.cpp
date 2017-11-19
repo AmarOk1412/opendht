@@ -39,9 +39,7 @@ namespace dht {
 constexpr std::chrono::seconds DhtRunner::BOOTSTRAP_PERIOD;
 
 DhtRunner::DhtRunner() : dht_()
-#if OPENDHT_PROXY_CLIENT
 , dht_via_proxy_()
-#endif //OPENDHT_PROXY_CLIENT
 {
 #ifdef _WIN32
     WSADATA wsd;
@@ -87,10 +85,8 @@ DhtRunner::run(const SockAddr& local4, const SockAddr& local6, DhtRunner::Config
     if (rcv_thread.joinable())
         rcv_thread.join();
     running = true;
-#if OPENDHT_PROXY_CLIENT
     config_.dht_config = config.dht_config;
     config_.threaded = config.threaded;
-#endif //OPENDHT_PROXY_CLIENT
     doRun(local4, local6, config.dht_config);
     if (not config.threaded)
         return;
@@ -520,7 +516,6 @@ DhtRunner::listen(InfoHash hash, GetCallback vcb, Value::Filter f, Where w)
     auto ret_token = std::make_shared<std::promise<size_t>>();
     {
         std::lock_guard<std::mutex> lck(storage_mtx);
-#if OPENDHT_PROXY_CLIENT
         pending_ops.emplace([=](SecureDht&) mutable {
             auto tokenProxy = 0, tokenClassic = 0;
             if (!use_proxy) {
@@ -529,11 +524,6 @@ DhtRunner::listen(InfoHash hash, GetCallback vcb, Value::Filter f, Where w)
             else if (dht_via_proxy_) {
                 tokenProxy = dht_via_proxy_->listen(hash, vcb, std::move(f), std::move(w));
             }
-#else
-        pending_ops.emplace([=](SecureDht& dht) mutable {
-            auto tokenClassic = dht.listen(hash, vcb, std::move(f), std::move(w));
-            auto tokenProxy = 0;
-#endif
             auto listener = std::unique_ptr<Listener>(new Listener());
             listener->globalToken = listener_token_;
             listener->tokenClassicDht = tokenClassic;
@@ -561,7 +551,6 @@ void
 DhtRunner::cancelListen(InfoHash h, size_t token)
 {
     {
-#if OPENDHT_PROXY_CLIENT
         auto it = listeners_.begin();
         for (; it != listeners_.end(); ++it) {
             auto& listener = *it;
@@ -570,9 +559,7 @@ DhtRunner::cancelListen(InfoHash h, size_t token)
             }
         }
         if (it == listeners_.end()) return;
-#endif // OPENDHT_PROXY_CLIENT
         std::lock_guard<std::mutex> lck(storage_mtx);
-#if OPENDHT_PROXY_CLIENT
         pending_ops.emplace([=](SecureDht&) {
             auto& listener = *it;
             if (listener->tokenClassicDht != 0) {
@@ -581,10 +568,6 @@ DhtRunner::cancelListen(InfoHash h, size_t token)
             if (dht_via_proxy_ && listener->tokenProxyDht > 0) {
                 dht_via_proxy_->cancelListen(h, listener->tokenProxyDht);
             }
-#else
-        pending_ops.emplace([=](SecureDht& dht) {
-            dht.cancelListen(h, token);
-#endif // OPENDHT_PROXY_CLIENT
         });
     }
     cv.notify_all();
@@ -859,24 +842,15 @@ DhtRunner::findCertificate(InfoHash hash, std::function<void(const std::shared_p
 
 void
 DhtRunner::resetDht() {
-#if OPENDHT_PROXY_CLIENT
     use_proxy? dht_via_proxy_.reset() : dht_.reset();
-#else
-    dht_.reset();
-#endif // OPENDHT_PROXY_CLIENT
 }
 
 SecureDht*
 DhtRunner::activeDht() const
 {
-#if OPENDHT_PROXY_CLIENT
     return use_proxy? dht_via_proxy_.get() : dht_.get();
-#else
-    return dht_.get();
-#endif // OPENDHT_PROXY_CLIENT
 }
 
-#if OPENDHT_PROXY_CLIENT
 void
 DhtRunner::enableProxy(bool proxify) {
     if (proxify) {
@@ -915,6 +889,5 @@ DhtRunner::enableProxy(bool proxify) {
         }
     }
 }
-#endif // OPENDHT_PROXY_CLIENT
 
 }

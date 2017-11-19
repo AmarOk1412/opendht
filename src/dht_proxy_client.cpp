@@ -16,8 +16,6 @@
  *  along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#if OPENDHT_PROXY_SERVER
-
 #include "dht_proxy_client.h"
 
 #include <chrono>
@@ -490,5 +488,3 @@ DhtProxyClient::restartListeners()
 
 
 } // namespace dht
-
-#endif // OPENDHT_PROXY_CLIENT
