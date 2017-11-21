@@ -35,17 +35,14 @@ namespace dht {
 DhtProxyClient::DhtProxyClient(const std::string& serverHost)
 : serverHost_(serverHost), scheduler(DHT_LOG), currentProxyInfos_(new Json::Value())
 {
-    auto confirm_proxy_time = scheduler.time() + std::chrono::seconds(5);
-    nextProxyConfirmation = scheduler.add(confirm_proxy_time, std::bind(&DhtProxyClient::confirmProxy, this));
-    auto confirm_connectivity = scheduler.time() + std::chrono::seconds(5);
-    nextConnectivityConfirmation = scheduler.add(confirm_connectivity, std::bind(&DhtProxyClient::confirmConnectivity, this));
-
-    getConnectivityStatus();
+    if (!serverHost_.empty())
+        start(serverHost_);
 }
 
 void
 DhtProxyClient::confirmProxy()
 {
+    if (serverHost_.empty()) return;
     // Retrieve the connectivity each hours if connected, else every 5 seconds.
     auto disconnected_old_status =  statusIpv4_ == NodeStatus::Disconnected && statusIpv6_ == NodeStatus::Disconnected;
     getConnectivityStatus();
@@ -56,6 +53,19 @@ DhtProxyClient::confirmProxy()
     }
     auto confirm_proxy_time = scheduler.time() + time;
     scheduler.edit(nextProxyConfirmation, confirm_proxy_time);
+}
+
+void
+DhtProxyClient::start(const std::string& serverHost)
+{
+    serverHost_ = serverHost;
+    if (serverHost_.empty()) return;
+    auto confirm_proxy_time = scheduler.time() + std::chrono::seconds(5);
+    nextProxyConfirmation = scheduler.add(confirm_proxy_time, std::bind(&DhtProxyClient::confirmProxy, this));
+    auto confirm_connectivity = scheduler.time() + std::chrono::seconds(5);
+    nextConnectivityConfirmation = scheduler.add(confirm_connectivity, std::bind(&DhtProxyClient::confirmConnectivity, this));
+
+    getConnectivityStatus();
 }
 
 void
