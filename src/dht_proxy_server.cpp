@@ -398,6 +398,10 @@ DhtProxyServer::sendPushNotification(const std::string& key, const Json::Value& 
     auto content = std::string("{\"notifications\": [{\"tokens\": [\""
     + key + "\"], \"platform\":  " + std::to_string(platform)
     + ",\"message\": \"" + valueStr + "\"}]}");
+<<<<<<< HEAD
+=======
+    std::cout << content << std::endl;
+>>>>>>> dhtproxy: support push notifications for mobile clients
     req->set_header("Content-Type", "application/json");
     req->set_header("Accept", "*/*");
     req->set_header("Host", pushServer_);
