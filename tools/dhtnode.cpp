@@ -70,8 +70,16 @@ void print_help() {
 
 #if OPENDHT_PROXY_CLIENT
     std::cout << std::endl << "Operations with the proxy:" << std::endl
-              << "  stt [server_address]  Start the proxy client." << std::endl
-              << "  stp                   Stop the proxy client." << std::endl;
+#if OPENDHT_PUSH_NOTIFICATIONS
+              << "  stt [server_address] <device_key> Start the proxy client." << std::endl
+#else
+              << "  stt [server_address]              Start the proxy client." << std::endl
+#endif // OPENDHT_PUSH_NOTIFICATIONS
+#if OPENDHT_PUSH_NOTIFICATIONS
+              << "  rs  [token]                       Resubscribe to opendht." << std::endl
+              << "  rp  [push_notification]           Inject a push notification in Opendht." << std::endl
+#endif // OPENDHT_PUSH_NOTIFICATIONS
+              << "  stp                               Stop the proxy client." << std::endl;
 #endif //OPENDHT_PROXY_CLIENT
 
     std::cout << std::endl << "Operations on the DHT:" << std::endl
@@ -115,7 +123,7 @@ void cmd_loop(std::shared_ptr<DhtRunner>& dht, dht_params& params)
 #if OPENDHT_PROXY_CLIENT
     if (!params.proxyclient.empty()) {
         dht->setProxyServer(params.proxyclient);
-        dht->enableProxy(true);
+        dht->enableProxy(true, params.devicekey);
     }
 #endif //OPENDHT_PROXY_CLIENT
 
@@ -127,7 +135,7 @@ void cmd_loop(std::shared_ptr<DhtRunner>& dht, dht_params& params)
             break;
 
         std::istringstream iss(line);
-        std::string op, idstr, value, index, keystr, pushServer;
+        std::string op, idstr, value, index, keystr, pushServer, deviceKey;
         iss >> op;
 
         if (op == "x" || op == "exit" || op == "quit") {
@@ -223,14 +231,28 @@ void cmd_loop(std::shared_ptr<DhtRunner>& dht, dht_params& params)
 #endif //OPENDHT_PROXY_SERVER
 #if OPENDHT_PROXY_CLIENT
         else if (op == "stt") {
-            iss >> idstr;
+            iss >> idstr >> deviceKey;
             dht->setProxyServer(idstr);
-            dht->enableProxy(true);
+            dht->enableProxy(true, deviceKey);
             continue;
         } else if (op == "stp") {
             dht->enableProxy(false);
             continue;
         }
+#if OPENDHT_PUSH_NOTIFICATIONS
+        else if (op == "rp") {
+            iss >> value;
+            dht->pushNotificationReceived(value);
+            continue;
+        } else if (op == "re") {
+            iss >> value;
+            try {
+                unsigned token = std::stoul(value);
+                dht->resubscribe(token);
+            } catch (...) { }
+            continue;
+        }
+#endif // OPENDHT_PUSH_NOTIFICATIONS
 #endif //OPENDHT_PROXY_CLIENT
 
         if (op.empty())
@@ -488,6 +510,15 @@ main(int argc, char **argv)
         }
 
         if (params.daemonize or params.service) {
+#if OPENDHT_PROXY_SERVER
+            if (params.proxyserver != 0) {
+                new DhtProxyServer(dht, params.proxyserver
+#if OPENDHT_PUSH_NOTIFICATIONS
+                                    , params.pushserver
+#endif // OPENDHT_PUSH_NOTIFICATIONS
+                );
+            }
+#endif //OPENDHT_PROXY_SERVER
             while (runner.wait());
         } else {
             cmd_loop(dht, params);
