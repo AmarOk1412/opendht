@@ -362,9 +362,10 @@ struct Dht::Search {
     /* number of concurrent sync requests */
     unsigned currentlySolicitedNodeCount() const {
         unsigned count = 0;
-        for (const auto& n : nodes)
+        for (const auto& n : nodes) {
             if (not n.isBad() and n.pendingGet())
                 count++;
+        }
         return count;
     }
 

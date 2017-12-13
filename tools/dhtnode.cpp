@@ -506,6 +506,8 @@ main(int argc, char **argv)
                 , params.pushserver
         #endif // OPENDHT_PUSH_NOTIFICATIONS
                 ));
+
+                log::enableLogging(*dht);
             }
         #endif //OPENDHT_PROXY_SERVER
         #if OPENDHT_PROXY_CLIENT

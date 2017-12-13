@@ -405,6 +405,11 @@ public:
     void resubscribe(const unsigned token);
 #endif // OPENDHT_PUSH_NOTIFICATIONS
 
+    /**
+     * @return the current active DHT
+     */
+    SecureDht* activeDht() const;
+
 private:
     static constexpr std::chrono::seconds BOOTSTRAP_PERIOD {10};
 
@@ -428,10 +433,6 @@ private:
      * reset dht clients
      */
     void resetDht();
-    /**
-     * @return the current active DHT
-     */
-    SecureDht* activeDht() const;
 #if OPENDHT_PROXY_CLIENT
     /**
      * true if we are currently using a proxy

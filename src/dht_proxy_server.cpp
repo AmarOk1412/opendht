@@ -55,6 +55,7 @@ DhtProxyServer::DhtProxyServer(std::shared_ptr<DhtRunner> dht, in_port_t port
         auto resource = std::make_shared<restbed::Resource>();
         resource->set_path("/");
         resource->set_method_handler("GET", std::bind(&DhtProxyServer::getNodeInfo, this, _1));
+        resource->set_method_handler("TEST", std::bind(&DhtProxyServer::getNodeInfo2, this, _1));
         service_->publish(resource);
         resource = std::make_shared<restbed::Resource>();
         resource->set_path("/{hash: .*}");
@@ -140,6 +141,7 @@ DhtProxyServer::stop()
 void
 DhtProxyServer::getNodeInfo(const std::shared_ptr<restbed::Session>& session) const
 {
+    std::cout << "GET /" << std::endl;
     const auto request = session->get_request();
     int content_length = std::stoi(request->get_header("Content-Length", "0"));
     session->fetch(content_length,
@@ -167,11 +169,26 @@ DhtProxyServer::getNodeInfo(const std::shared_ptr<restbed::Session>& session) co
 }
 
 void
+DhtProxyServer::getNodeInfo2(const std::shared_ptr<restbed::Session>& session) const
+{
+    std::cout << "GET /" << std::endl;
+    const auto request = session->get_request();
+    int content_length = std::stoi(request->get_header("Content-Length", "0"));
+    session->fetch(content_length,
+        [=](const std::shared_ptr<restbed::Session> s, const restbed::Bytes& /*b*/)
+        {
+            s->close(restbed::SERVICE_UNAVAILABLE, "{\"info\":\"ANSWER FROM PROXY\"}");
+        }
+    );
+}
+
+void
 DhtProxyServer::get(const std::shared_ptr<restbed::Session>& session) const
 {
     const auto request = session->get_request();
     int content_length = std::stoi(request->get_header("Content-Length", "0"));
     auto hash = request->get_path_parameter("hash");
+    std::cout << "GET /" << hash.c_str()  << std::endl;
     session->fetch(content_length,
         [=](const std::shared_ptr<restbed::Session> s, const restbed::Bytes& /*b* */)
         {
@@ -216,6 +233,7 @@ DhtProxyServer::listen(const std::shared_ptr<restbed::Session>& session) const
     InfoHash infoHash(hash);
     if (!infoHash)
         infoHash = InfoHash::get(hash);
+    std::cout << "LISTEN /" << hash.c_str() << std::endl;
     session->fetch(content_length,
         [=](const std::shared_ptr<restbed::Session> s, const restbed::Bytes& /*b* */)
         {
@@ -268,6 +286,7 @@ DhtProxyServer::subscribe(const std::shared_ptr<restbed::Session>& session) cons
     InfoHash infoHash(hash);
     if (!infoHash)
         infoHash = InfoHash::get(hash);
+    std::cout << "SUBSCRIBE /" << hash.c_str() << std::endl;
     session->fetch(content_length,
         [=](const std::shared_ptr<restbed::Session> s, const restbed::Bytes& b)
         {
@@ -332,6 +351,7 @@ DhtProxyServer::unsubscribe(const std::shared_ptr<restbed::Session>& session) co
     InfoHash infoHash(hash);
     if (!infoHash)
         infoHash = InfoHash::get(hash);
+    std::cout << "UNSUBSCRIBE /" << hash.c_str() << std::endl;
     session->fetch(content_length,
         [=](const std::shared_ptr<restbed::Session> s, const restbed::Bytes& b)
         {
@@ -377,6 +397,7 @@ DhtProxyServer::unsubscribe(const std::shared_ptr<restbed::Session>& session) co
 void
 DhtProxyServer::sendPushNotification(const std::string& key, const Json::Value& json, bool isAndroid) const
 {
+    std::cout << "SEND PUSH TO /" << key.c_str() << std::endl;
     restbed::Uri uri(HTTP_PROTO + pushServer_ + "/api/push");
     auto req = std::make_shared<restbed::Request>(uri);
     req->set_method("POST");
@@ -464,6 +485,7 @@ DhtProxyServer::put(const std::shared_ptr<restbed::Session>& session) const
     if (!infoHash)
         infoHash = InfoHash::get(hash);
 
+    std::cout << "PUT /" << hash.c_str() << std::endl;
     session->fetch(content_length,
         [=](const std::shared_ptr<restbed::Session> s, const restbed::Bytes& b)
         {

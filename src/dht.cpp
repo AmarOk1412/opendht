@@ -30,6 +30,8 @@
 #include <random>
 #include <sstream>
 
+#include <iostream>
+
 namespace dht {
 
 using namespace std::placeholders;
@@ -585,14 +587,16 @@ Dht::searchStep(Sp<Search> sr)
     if (sr->currentlySolicitedNodeCount() < MAX_REQUESTED_SEARCH_NODES) {
         unsigned i = 0;
         SearchNode* sent;
+        std::cout << "#" << std::endl;
         do {
             sent = searchSendGetValues(sr);
             if (sent and not sent->candidate)
                 i++;
         }
         while (sent and sr->currentlySolicitedNodeCount() < MAX_REQUESTED_SEARCH_NODES);
-        /*DHT_LOG_DEBUG("[search %s IPv%c] step: sent %u requests (total %u).",
-            sr->id.toString().c_str(), sr->af == AF_INET ? '4' : '6', i, sr->currentlySolicitedNodeCount());*/
+        std::cout << "[search %s IPv%c] step: sent %u requests (total %u)." <<
+            sr->id.toString().c_str() <<  (sr->af == AF_INET ? '4' : '6') << ":" << i// << sr->currentlySolicitedNodeCount());
+            << std::endl;
     }
 
     if (sr->getNumberOfConsecutiveBadNodes() >= std::min(sr->nodes.size(),
@@ -603,7 +607,6 @@ Dht::searchStep(Sp<Search> sr)
         connectivityChanged(sr->af);
     }
 
-    /* dumpSearch(*sr, std::cout); */
 
     /* periodic searchStep scheduling. */
     if (not sr->done)

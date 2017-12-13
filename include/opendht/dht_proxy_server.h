@@ -77,7 +77,8 @@ private:
      * On error: HTTP 503, body: {"err":"xxxx"}
      * @param session
      */
-    void getNodeInfo(const std::shared_ptr<restbed::Session>& session) const;
+     void getNodeInfo(const std::shared_ptr<restbed::Session>& session) const;
+    void getNodeInfo2(const std::shared_ptr<restbed::Session>& session) const;
 
     /**
      * Return Values of an infoHash
