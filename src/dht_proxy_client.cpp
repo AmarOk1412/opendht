@@ -608,8 +608,10 @@ DhtProxyClient::onProxyInfos(const Json::Value& proxyInfos, sa_family_t family)
 
     auto newStatus = std::max(statusIpv4_, statusIpv6_);
     if (newStatus == NodeStatus::Connected) {
-        if (oldStatus == NodeStatus::Disconnected || oldStatus == NodeStatus::Connecting) {
+        if ((oldStatus == NodeStatus::Disconnected || oldStatus == NodeStatus::Connecting) && !isRestarting) {
+            isRestarting = true;
             restartListeners();
+            isRestarting = false;
         }
         scheduler.edit(nextProxyConfirmation, scheduler.time() + std::chrono::minutes(15));
     }
@@ -667,6 +669,7 @@ DhtProxyClient::cancelListen(const InfoHash& key, size_t gtoken) {
             auto it = searches_.find(key);
             if (it != searches_.end()) {
                 auto next = it->second.ops.expire(scheduler.time(), [this,key](size_t ltoken){
+                    DHT_LOG.e("#################cancelListen: %s", key.toString().c_str());
                     doCancelListen(key, ltoken);
                 });
                 if (next != time_point::max()) {
@@ -974,6 +977,7 @@ DhtProxyClient::restartListeners()
     std::lock_guard<std::mutex> lock(searchLock_);
     for (auto& search: searches_) {
         for (auto& l: search.second.listeners) {
+            DHT_LOG.e("#################search.first.toString(): %s", search.first.toString().c_str());
             auto& listener = l.second;
             auto state = listener.state;
             if (listener.thread.joinable()) {

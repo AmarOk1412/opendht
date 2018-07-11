@@ -376,6 +376,7 @@ private:
 #endif // OPENDHT_PUSH_NOTIFICATIONS
 
     bool isDestroying_ {false};
+    std::atomic_bool isRestarting {false};
 };
 
 }

@@ -46,7 +46,7 @@ struct DhtProxyServer::SearchPuts {
     std::map<dht::Value::Id, PermanentPut> puts;
 };
 
-constexpr const std::chrono::minutes PRINT_STATS_PERIOD {2};
+constexpr const std::chrono::seconds PRINT_STATS_PERIOD {10};
 
 DhtProxyServer::DhtProxyServer(std::shared_ptr<DhtRunner> dht, in_port_t port , const std::string& pushServer)
 : dht_(dht) , pushServer_(pushServer)
@@ -288,6 +288,7 @@ DhtProxyServer::listen(const std::shared_ptr<restbed::Session>& session)
     InfoHash infoHash(hash);
     if (!infoHash)
         infoHash = InfoHash::get(hash);
+    std::cout << "listen: " << infoHash << std::endl;
     session->fetch(content_length,
         [=](const std::shared_ptr<restbed::Session> s, const restbed::Bytes& /*b* */)
         {
@@ -842,6 +843,7 @@ DhtProxyServer::removeClosedListeners(bool testSession)
     while (listener != currentListeners_.end()) {
         auto cancel = dht_ and (not testSession or listener->session->is_closed());
         if (cancel) {
+            std::cout << "cancel listen: " << listener->hash << std::endl;
             dht_->cancelListen(listener->hash, std::move(listener->token));
             // Remove listener if unused
             listener = currentListeners_.erase(listener);
