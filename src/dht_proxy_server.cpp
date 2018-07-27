@@ -46,7 +46,7 @@ struct DhtProxyServer::SearchPuts {
     std::map<dht::Value::Id, PermanentPut> puts;
 };
 
-constexpr const std::chrono::minutes PRINT_STATS_PERIOD {2};
+constexpr const std::chrono::seconds PRINT_STATS_PERIOD {10};
 
 DhtProxyServer::DhtProxyServer(std::shared_ptr<DhtRunner> dht, in_port_t port , const std::string& pushServer)
 : dht_(dht) , pushServer_(pushServer)
@@ -584,7 +584,6 @@ DhtProxyServer::put(const std::shared_ptr<restbed::Session>& session)
     InfoHash infoHash(hash);
     if (!infoHash)
         infoHash = InfoHash::get(hash);
-
     session->fetch(content_length,
         [=](const std::shared_ptr<restbed::Session> s, const restbed::Bytes& b)
         {
@@ -603,7 +602,7 @@ DhtProxyServer::put(const std::shared_ptr<restbed::Session>& session)
                             // Build the Value from json
                             auto value = std::make_shared<Value>(root);
                             bool permanent = root.isMember("permanent");
-                            std::cout << "Got put " << infoHash << " " << *value << " " << (permanent ? "permanent" : "") << std::endl;
+                            std::cout << "GOT PUT / " << infoHash << " " << (permanent ? "permanent" : "") << std::endl;
 
                             if (permanent) {
                                 std::string pushToken, clientId, platform;
@@ -641,6 +640,7 @@ DhtProxyServer::put(const std::shared_ptr<restbed::Session>& session)
                                     }
 #endif
                                 } else {
+                                    std::cout << "Put: else" << infoHash <<  std::endl;
                                     scheduler_.edit(pput.expireJob, timeout);
                                     if (pput.expireNotifyJob)
                                         scheduler_.edit(pput.expireNotifyJob, timeout - proxy::OP_MARGIN);

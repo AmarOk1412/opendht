@@ -335,15 +335,26 @@ DhtProxyClient::put(const InfoHash& key, Sp<Value> val, DoneCallback cb, time_po
         auto ok = std::make_shared<std::atomic_bool>(false);
         search->second.puts.erase(id);
         search->second.puts.emplace(id, PermanentPut {val, scheduler.add(nextRefresh, [this, key, id, ok]{
+            std::cout << "IN THE REFRESH JOB " << key << std::endl;
             std::lock_guard<std::mutex> lock(searchLock_);
+            std::cout << "DO A PERMANENT PUT ON " << key << std::endl;
             auto s = searches_.find(key);
             if (s != searches_.end()) {
                 auto p = s->second.puts.find(id);
                 if (p != s->second.puts.end()) {
                     doPut(key, p->second.value,
-                    [ok](bool result, const std::vector<std::shared_ptr<dht::Node> >&){
-                        *ok = !result;
+                    [ok, this](bool result, const std::vector<std::shared_ptr<dht::Node> >&){
+                        if (result) {
+                            std::cout << "SET OK " << std::endl;
+                            DHT_LOG.e("@@@@SET OK", !result);
+                        } else {
+                            std::cout << "SET NOK " << std::endl;
+                            DHT_LOG.e("@@@@SET NOK", !result);
+                        }
+                        *ok = result;
                     }, time_point::max(), true);
+                    std::cout << "RESCHEDULE JOB FOR " << key << std::endl;
+                    DHT_LOG.e("@@@@RESCHEDULE JOB FOR %s", key.toString().c_str());
                     scheduler.edit(p->second.refreshJob, scheduler.time() + proxy::OP_TIMEOUT - proxy::OP_MARGIN);
                 }
             }
@@ -355,6 +366,10 @@ DhtProxyClient::put(const InfoHash& key, Sp<Value> val, DoneCallback cb, time_po
 void
 DhtProxyClient::doPut(const InfoHash& key, Sp<Value> val, DoneCallback cb, time_point /*created*/, bool permanent)
 {
+    if (permanent) {
+        std::cout << "DO A PERMANENT PUT ON " << key << std::endl;
+        DHT_LOG.e("DO A PERMANENT PUT ON %s", key.toString().c_str());
+    }
     DHT_LOG.d(key, "[search %s] performing put of %s", key.to_c_str(), val->toString().c_str());
     restbed::Uri uri(proxy::HTTP_PROTO + serverHost_ + "/" + key.toString());
     auto req = std::make_shared<restbed::Request>(uri);
@@ -951,13 +966,20 @@ DhtProxyClient::restartListeners()
     DHT_LOG.d("Refresh permanent puts");
     for (auto& search : searches_) {
         for (auto& put : search.second.puts) {
+            DHT_LOG.e("######################DO PUT FOR %s?", search.first.toString().c_str());
+            std::cout << "######################DO PUT FOR " << search.first.toString() << "?" << std::endl;
             if (!put.second.ok) {
+                DHT_LOG.e("######################DO PUT FOR %s", search.first.toString().c_str());
+                std::cout << "######################DO PUT FOR " << search.first.toString() << std::endl;
                 auto ok = put.second.ok;
                 doPut(search.first, put.second.value,
                 [ok](bool result, const std::vector<std::shared_ptr<dht::Node> >&){
-                    *ok = !result;
+                    *ok = result;
                 }, time_point::max(), true);
                 scheduler.edit(put.second.refreshJob, scheduler.time() + proxy::OP_TIMEOUT - proxy::OP_MARGIN);
+            } else {
+                DHT_LOG.e("######################PUT %s is still OK!", search.first.toString().c_str());
+                std::cout << "######################PUT " << search.first.toString() << " is still OK!" << std::endl;
             }
         }
     }
