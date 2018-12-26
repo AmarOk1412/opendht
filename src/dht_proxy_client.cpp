@@ -836,17 +836,23 @@ DhtProxyClient::doListen(const InfoHash& key, ValueCallback cb, Value::Filter fi
     auto state = std::make_shared<ListenState>();
     l->second.state = state;
     l->second.cb = [this,key,token,state](const std::vector<Sp<Value>>& values, bool expired) {
-        if (state->cancel)
+        DHT_LOG.e("#### Exec callback listen");
+        if (state->cancel) {
+            DHT_LOG.e("#### Is cancelled. Return.");
             return false;
+        }
         std::lock_guard<std::mutex> lock(searchLock_);
         auto s = searches_.find(key);
         if (s == searches_.end()) {
+            DHT_LOG.e("#### Ikey not found. Return.");
             return false;
         }
         auto l = s->second.listeners.find(token);
         if (l == s->second.listeners.end()) {
+            DHT_LOG.e("#### Token not found. Return.");
             return false;
         }
+        DHT_LOG.e("#### Placing values.");
         const std::vector<Sp<Value>> new_values_empty;
         std::vector<Value::Id> expired_ids;
         if (expired) {
@@ -854,9 +860,13 @@ DhtProxyClient::doListen(const InfoHash& key, ValueCallback cb, Value::Filter fi
             for (const auto& v : values)
                 expired_ids.emplace_back(v->id);
         }
+        if (expired) {
+            DHT_LOG.e("#### EXPIRED");
+        }
         auto next = l->second.cache.onValues(expired ? new_values_empty : values, std::vector<Value::Id>{}, expired_ids, types, scheduler.time());
         scheduler.edit(l->second.cacheExpirationJob, next);
         loopSignal_();
+        DHT_LOG.e("#### Return true.");
         return true;
     };
 
@@ -1027,7 +1037,9 @@ DhtProxyClient::restartListeners()
 void
 DhtProxyClient::pushNotificationReceived(const std::map<std::string, std::string>& notification)
 {
+    DHT_LOG.e("PUSH NOTIFICATION x");
 #if OPENDHT_PUSH_NOTIFICATIONS
+    DHT_LOG.e("PUSH NOTIFICATION x1");
     scheduler.syncTime();
     {
         // If a push notification is received, the proxy is up and running
@@ -1038,6 +1050,7 @@ DhtProxyClient::pushNotificationReceived(const std::map<std::string, std::string
     try {
         std::lock_guard<std::mutex> lock(searchLock_);
         auto timeout = notification.find("timeout");
+        DHT_LOG.e("PUSH NOTIFICATION x2");
         if (timeout != notification.cend()) {
             InfoHash key(timeout->second);
             auto& search = searches_.at(key);
@@ -1054,15 +1067,24 @@ DhtProxyClient::pushNotificationReceived(const std::map<std::string, std::string
                     resubscribe(key, list.second);
             }
         } else {
+            DHT_LOG.e("PUSH NOTIFICATION x3");
             auto token = std::stoull(notification.at("token"));
             for (auto& search: searches_) {
+                DHT_LOG.e("PUSH NOTIFICATION x4");
                 for (auto& list : search.second.listeners) {
-                    if (*list.second.pushNotifToken != token or list.second.state->cancel)
+                    DHT_LOG.e("PUSH NOTIFICATION x5");
+                    if (*list.second.pushNotifToken != token or list.second.state->cancel) {
+                        int x = list.second.state->cancel ? 1 : 0;
+                        DHT_LOG.e("PUSH NOTIFICATION x51 %s %s %i", *list.second.pushNotifToken, token, x);
                         continue;
+                    }
+                    DHT_LOG.e("PUSH NOTIFICATION x52");
                     DHT_LOG.d(search.first, "[search %s] handling push notification", search.first.to_c_str());
                     auto cb = list.second.cb;
                     auto filter = list.second.filter;
-                    get(search.first, [cb](const std::vector<Sp<Value>>& vals) {
+                    DHT_LOG.e("PUSH NOTIFICATION x6");
+                    get(search.first, [this, cb](const std::vector<Sp<Value>>& vals) {
+                        DHT_LOG.e("PUSH NOTIFICATION x7");
                         cb(vals, false);
                         return true;
                     }, DoneCallbackSimple{}, std::move(filter));
@@ -1070,6 +1092,7 @@ DhtProxyClient::pushNotificationReceived(const std::map<std::string, std::string
             }
         }
     } catch (const std::exception& e) {
+        DHT_LOG.e("PUSH NOTIFICATION x....");
         DHT_LOG.e("Error handling push notification: %s", e.what());
     }
 #endif
