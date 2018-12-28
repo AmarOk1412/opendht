@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.1)
-project (opendht)
+project (opendht C CXX)
 set (opendht_VERSION_MAJOR 1)
 set (opendht_VERSION_MINOR 8.1)
 set (opendht_VERSION ${opendht_VERSION_MAJOR}.${opendht_VERSION_MINOR})
@@ -20,7 +20,7 @@ option (OPENDHT_PROXY_SERVER "Enable DHT proxy server, use Restbed and jsoncpp" 
 option (OPENDHT_PUSH_NOTIFICATIONS "Enable push notifications support" OFF)
 option (OPENDHT_PROXY_SERVER_IDENTITY "Allow clients to use the node identity" OFF)
 option (OPENDHT_PROXY_CLIENT "Enable DHT proxy client, use Restbed and jsoncpp" OFF)
-option (OPENDHT_INDEX "Build DHT indexation feature" OFF)
+option (OPENDHT_INDEX "Build DHT indexation feature" ON)
 option (OPENDHT_TESTS "Add unit tests executable" OFF)
 
 find_package(Doxygen)
