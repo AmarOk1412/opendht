@@ -271,6 +271,8 @@ DhtProxyServer::get(const Sp<restbed::Session>& session) const
     const auto request = session->get_request();
     int content_length = std::stoi(request->get_header("Content-Length", "0"));
     auto hash = request->get_path_parameter("hash");
+
+    std::cout << "GET " << hash << std::endl;
     session->fetch(content_length,
         [=](const Sp<restbed::Session>& s, const restbed::Bytes& /*b* */)
         {
@@ -280,14 +282,16 @@ DhtProxyServer::get(const Sp<restbed::Session>& session) const
                     if (!infoHash) {
                         infoHash = InfoHash::get(hash);
                     }
+                    std::cout << "GET 2 " << infoHash << std::endl;
                     s->yield(restbed::OK, "", [=](const Sp<restbed::Session>&) {});
-                    dht_->get(infoHash, [s](const Sp<Value>& value) {
+                    dht_->get(infoHash, [s, infoHash](const Sp<Value>& value) {
                         if (s->is_closed()) return false;
                         // Send values as soon as we get them
                         Json::StreamWriterBuilder wbuilder;
                         wbuilder["commentStyle"] = "None";
                         wbuilder["indentation"] = "";
                         auto output = Json::writeString(wbuilder, value->toJson()) + "\n";
+                        std::cout << "Yield" << infoHash << std::endl;
                         s->yield(output, [](const Sp<restbed::Session>& /*session*/){ });
                         return true;
                     }, [s](bool /*ok* */) {
@@ -599,6 +603,8 @@ DhtProxyServer::cancelPut(const InfoHash& key, Value::Id vid)
         puts_.erase(sPuts);
 }
 
+#include <iostream>
+
 void
 DhtProxyServer::put(const std::shared_ptr<restbed::Session>& session)
 {
@@ -609,6 +615,8 @@ DhtProxyServer::put(const std::shared_ptr<restbed::Session>& session)
     InfoHash infoHash(hash);
     if (!infoHash)
         infoHash = InfoHash::get(hash);
+
+    std::cout << "PUT " << infoHash << std::endl;
 
     session->fetch(content_length,
         [=](const std::shared_ptr<restbed::Session> s, const restbed::Bytes& b)

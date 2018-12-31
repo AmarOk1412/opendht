@@ -799,6 +799,7 @@ DhtRunner::putEncrypted(InfoHash hash, InfoHash to, std::shared_ptr<Value> value
     {
         std::lock_guard<std::mutex> lck(storage_mtx);
         pending_ops.emplace([=](SecureDht& dht) {
+            std::cout << "dht.putEncrypted " << hash << std::endl;
             dht.putEncrypted(hash, to, value, cb);
         });
     }

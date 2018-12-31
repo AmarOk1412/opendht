@@ -251,6 +251,8 @@ DhtProxyClient::get(const InfoHash& key, GetCallback cb, DoneCallback donecb, Va
     Operation o;
     o.req = req;
     o.finished = finished;
+    ++idefix;
+    auto panoramix = idefix;
     o.thread = std::thread([=](){
         // Try to contact the proxy and set the status to connected when done.
         // will change the connectivity status
@@ -266,6 +268,7 @@ DhtProxyClient::get(const InfoHash& key, GetCallback cb, DoneCallback donecb, Va
                     try {
                         while (restbed::Http::is_open(req) and not *finished and not state->stop) {
                             restbed::Http::fetch("\n", reply);
+                            DHT_LOG.e("RECEIVE VALUE  %i", panoramix);
                             if (*finished or state->stop)
                                 break;
                             std::string body;
@@ -277,17 +280,22 @@ DhtProxyClient::get(const InfoHash& key, GetCallback cb, DoneCallback donecb, Va
                             Json::CharReaderBuilder rbuilder;
                             auto* char_data = reinterpret_cast<const char*>(&body[0]);
                             auto reader = std::unique_ptr<Json::CharReader>(rbuilder.newCharReader());
+                            DHT_LOG.e("PARSE VALUE %i", panoramix);
                             if (reader->parse(char_data, char_data + body.size(), &json, &err)) {
                                 auto value = std::make_shared<Value>(json);
                                 if ((not filter or filter(*value)) and cb) {
                                     std::lock_guard<std::mutex> lock(lockCallbacks);
-                                    callbacks_.emplace_back([cb, value, state]() {
-                                        if (not state->stop and not cb({value}))
+                                    callbacks_.emplace_back([this, panoramix, cb, value, state]() {
+                                        DHT_LOG.e("DO CALLBACK %i", panoramix);
+                                        if (not state->stop and not cb({value})) {
+                                            DHT_LOG.e("DO STOP %i", panoramix);
                                             state->stop = true;
+                                        }
                                     });
                                     loopSignal_();
                                 }
                             } else {
+                                DHT_LOG.e("FAILED TO PARSE %i", panoramix);
                                 state->ok = false;
                             }
                         }
@@ -302,6 +310,7 @@ DhtProxyClient::get(const InfoHash& key, GetCallback cb, DoneCallback donecb, Va
         if (donecb) {
             std::lock_guard<std::mutex> lock(lockCallbacks);
             callbacks_.emplace_back([=](){
+                DHT_LOG.e("DO DONE %i", panoramix);
                 donecb(state->ok, {});
                 state->stop = true;
             });
@@ -311,6 +320,7 @@ DhtProxyClient::get(const InfoHash& key, GetCallback cb, DoneCallback donecb, Va
             // Connection failed, update connectivity
             opFailed();
         }
+        DHT_LOG.e("FINISHED %i", panoramix);
         *finished = true;
     });
     {

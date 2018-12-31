@@ -378,6 +378,9 @@ private:
 #endif // OPENDHT_PUSH_NOTIFICATIONS
 
     std::atomic_bool isDestroying_ {false};
+
+
+    int idefix = 1;
 };
 
 }
