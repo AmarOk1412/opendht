@@ -35,6 +35,8 @@
 #include <memory>
 #include <queue>
 
+#include <mutex>
+
 namespace dht {
 namespace net {
 
@@ -526,6 +528,8 @@ private:
     // requests handling
     std::map<Tid, Sp<Request>> requests {};
     std::map<Tid, PartialMessage> partial_messages;
+    std::mutex lock_req_;
+    std::mutex lock_pm_;
 
     MessageStats in_stats {}, out_stats {};
     std::set<SockAddr> blacklist {};

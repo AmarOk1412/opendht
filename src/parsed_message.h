@@ -91,14 +91,19 @@ ParsedMessage::append(const ParsedMessage& block)
     for (const auto& ve : block.value_parts) {
         auto part_val = value_parts.find(ve.first);
         if (part_val == value_parts.end()
-            || part_val->second.second.size() >= part_val->second.first)
+            || part_val->second.second.size() >= part_val->second.first) {
+
+            std::cout << "part_val not found || part_val->second.second.size() >= part_val->second.first" << std::endl;
+
             continue;
+            }
         // TODO: handle out-of-order packets
         if (ve.second.first != part_val->second.second.size()) {
-            //std::cout << "skipping out-of-order packet" << std::endl;
+            std::cout << "skipping out-of-order packet" << std::endl;
             continue;
         }
         ret = true;
+        std::cout << "value_part " << ve.first << " OFFSET: " << part_val->second.second.size() << std::endl;
         part_val->second.second.insert(part_val->second.second.end(),
                                        ve.second.second.begin(),
                                        ve.second.second.end());

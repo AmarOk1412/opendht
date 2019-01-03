@@ -178,6 +178,7 @@ NetworkEngine::tellListener(Sp<Node> node, Tid socket_id, const InfoHash& hash, 
 {
     auto nnodes = bufferNodes(node->getFamily(), hash, want, nodes, nodes6);
     try {
+        DHT_LOG.e("@@@@@@@@@@@@@@@@@@SEND FROM TELL LISTENER: %u", socket_id);
         sendNodesValues(node->getAddr(), socket_id, nnodes.first, nnodes.second, values, query, ntoken);
     } catch (const std::overflow_error& e) {
         DHT_LOG.e("Can't send value: buffer not large enough !");
@@ -263,6 +264,7 @@ NetworkEngine::isRunning(sa_family_t af) const
 void
 NetworkEngine::clear()
 {
+    std::lock_guard<std::mutex> lk(lock_req_);
     for (auto& request : requests) {
         request.second->cancel();
         request.second->node->setExpired();
@@ -288,10 +290,13 @@ NetworkEngine::requestStep(Sp<Request> sreq)
     if (req.isExpired(now)) {
         DHT_LOG.d(node.id, "[node %s] expired !", node.toString().c_str());
         node.setExpired();
-        if (not node.id)
+        if (not node.id) {
+            std::lock_guard<std::mutex> lk(lock_req_);
             requests.erase(req.tid);
+
+        }
         return;
-    } else if (req.attempt_count == 1) {
+    } else if (req.attempt_count == Request::MAX_ATTEMPT_COUNT) {
         req.on_expired(req, false);
     }
 
@@ -305,8 +310,11 @@ NetworkEngine::requestStep(Sp<Request> sreq)
         err == EPERM)
     {
         node.setExpired();
-        if (not node.id)
+        if (not node.id) {
+
+            std::lock_guard<std::mutex> lk(lock_req_);
             requests.erase(req.tid);
+        }
     } else {
         if (err != EAGAIN) {
             ++req.attempt_count;
@@ -328,8 +336,10 @@ void
 NetworkEngine::sendRequest(const Sp<Request>& request)
 {
     auto& node = request->node;
-    if (not node->id)
+    if (not node->id) {
+        std::lock_guard<std::mutex> lk(lock_req_);
         requests.emplace(request->tid, request);
+    }
     request->start = scheduler.time();
     node->requested(request);
     requestStep(request);
@@ -429,9 +439,9 @@ NetworkEngine::processMessage(const uint8_t *buf, size_t buflen, const SockAddr&
     }
 
     const auto& now = scheduler.time();
-
     // partial value data
     if (msg->type == MessageType::ValueData) {
+        std::lock_guard<std::mutex> lk(lock_pm_);
         auto pmsg_it = partial_messages.find(msg->tid);
         if (pmsg_it == partial_messages.end()) {
             if (logIncoming_)
@@ -445,6 +455,7 @@ NetworkEngine::processMessage(const uint8_t *buf, size_t buflen, const SockAddr&
             return;
         }
         // append data block
+        DHT_LOG.e("############################## APPEND DATA tid: %u", msg->tid);
         if (pmsg_it->second.msg->append(*msg)) {
             pmsg_it->second.last_part = now;
             // check data completion
@@ -480,7 +491,9 @@ NetworkEngine::processMessage(const uint8_t *buf, size_t buflen, const SockAddr&
         pmsg.msg = std::move(msg);
         pmsg.start = now;
         pmsg.last_part = now;
+        std::lock_guard<std::mutex> lk(lock_pm_);
         auto wmsg = partial_messages.emplace(pmsg.msg->tid, std::move(pmsg));
+        DHT_LOG.e("############################## HEADER DATA tid: %u", wmsg.first->first);
         if (wmsg.second) {
             scheduler.add(now + RX_MAX_PACKET_TIME, std::bind(&NetworkEngine::maintainRxBuffer, this, wmsg.first->first));
             scheduler.add(now + RX_TIMEOUT, std::bind(&NetworkEngine::maintainRxBuffer, this, wmsg.first->first));
@@ -510,6 +523,7 @@ NetworkEngine::process(std::unique_ptr<ParsedMessage>&& msg, const SockAddr& fro
 
         /* either response for a request or data for an opened socket */
         if (not req and not rsocket) {
+            std::lock_guard<std::mutex> lk(lock_req_);
             auto req_it = requests.find(msg->tid);
             if (req_it != requests.end() and not req_it->second->node->id) {
                 req = req_it->second;
@@ -595,6 +609,7 @@ NetworkEngine::process(std::unique_ptr<ParsedMessage>&& msg, const SockAddr& fro
                 ++in_stats.get;
                 RequestAnswer answer = onGetValues(node, msg->info_hash, msg->want, msg->query);
                 auto nnodes = bufferNodes(from.getFamily(), msg->info_hash, msg->want, answer.nodes4, answer.nodes6);
+                DHT_LOG.e("@@@@@@@@@@@@@@@@@@SEND FROM GET %u", msg->tid);
                 sendNodesValues(from, msg->tid, nnodes.first, nnodes.second, answer.values, msg->query, answer.ntoken);
                 break;
             }
@@ -999,6 +1014,7 @@ NetworkEngine::sendNodesValues(const SockAddr& addr, Tid tid, const Blob& nodes,
     }
 
     // send response
+    DHT_LOG.e("@@@@SEND HEADER %u", tid);
     send(buffer.data(), buffer.size(), 0, addr);
 
     // send parts
@@ -1314,6 +1330,7 @@ NetworkEngine::sendError(const SockAddr& addr,
 void
 NetworkEngine::maintainRxBuffer(Tid tid)
 {
+    std::lock_guard<std::mutex> lk(lock_pm_);
     auto msg = partial_messages.find(tid);
     if (msg != partial_messages.end()) {
         const auto& now = scheduler.time();
