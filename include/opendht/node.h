@@ -137,8 +137,9 @@ struct Node {
      * @return the new id.
      */
     Tid getNewTid() {
-        ++transaction_id;
-        return transaction_id ? ++transaction_id : transaction_id;
+        transaction_id == std::numeric_limits<uint32_t>::max() ? 1 : ++transaction_id;
+        std::cout << transaction_id << std::endl;
+        return transaction_id;
     }
 
     std::string toString() const;

@@ -34,7 +34,8 @@ Node::Node(const InfoHash& id, const SockAddr& addr, bool client)
 : id(id), addr(addr), is_client(client), sockets_()
 {
     thread_local crypto::random_device rd {};
-    transaction_id = std::uniform_int_distribution<Tid>{1}(rd);
+    transaction_id = std::uniform_int_distribution<Tid>{
+        1, std::numeric_limits<uint32_t>::max()}(rd);
 }
 
 /* This is our definition of a known-good node. */
