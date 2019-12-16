@@ -835,6 +835,7 @@ Dht::listenTo(const InfoHash& id, sa_family_t af, ValueCallback cb, Value::Filte
 size_t
 Dht::listen(const InfoHash& id, ValueCallback cb, Value::Filter f, Where where)
 {
+    DHT_LOG.e("Dht::listen");
     scheduler.syncTime();
 
     auto token = ++listener_token;

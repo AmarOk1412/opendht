@@ -240,6 +240,11 @@ Connection::async_handshake(HandlerCb cb)
                     else if (verify_ec != X509_V_OK)
                         this_.logger_->e("[connection:%i] verify handshake error: %i", this_.id_, verify_ec);
                 }
+                if (ec) {
+                    if (this_.logger_) {
+                        this_.logger_->d("@@@ xxx");
+                    }
+                }
             }
             if (cb)
                 cb(ec);
@@ -510,6 +515,7 @@ Request::Request(asio::io_context& ctx, std::shared_ptr<Resolver> resolver, cons
 Request::~Request()
 {
     resolver_.reset();
+    if (logger_) logger_->e("term 1");
     terminate(asio::error::connection_aborted);
 }
 
@@ -755,6 +761,8 @@ Request::connect(std::vector<asio::ip::tcp::endpoint>&& endpoints, HandlerCb cb)
             return;
         auto& this_ = *sthis;
         if (ec == asio::error::operation_aborted){
+            if (this_.logger_)
+                this_.logger_->e("@@@ term 2");
             this_.terminate(ec);
             return;
         }
@@ -811,15 +819,19 @@ Request::send()
         if (auto sthis = wthis.lock()) {
             auto& this_ = *sthis;
             if (ec){
-                if (this_.logger_)
+                if (this_.logger_) {
                     this_.logger_->e("[http:request:%i] resolve error: %s", this_.id_, ec.message().c_str());
+                    this_.logger_->e("term 3");
+                }
                 this_.terminate(asio::error::connection_aborted);
             }
             else if (!this_.conn_ or !this_.conn_->is_open()) {
                 this_.connect(std::move(endpoints), [wthis](const asio::error_code &ec) {
                     if (auto sthis = wthis.lock()) {
-                        if (ec)
+                        if (ec) {
+                            if (sthis->logger_) sthis->logger_->e("term 4");
                             sthis->terminate(asio::error::not_connected);
+                        }
                         else
                             sthis->post();
                     }
@@ -835,6 +847,7 @@ void
 Request::post()
 {
     if (!conn_ or !conn_->is_open()){
+        if (logger_) logger_->e("term 7");
         terminate(asio::error::not_connected);
         return;
     }
@@ -883,10 +896,12 @@ void
 Request::handle_request(const asio::error_code& ec)
 {
     if (ec and ec != asio::error::eof){
+        if (logger_) logger_->e("term 57");
         terminate(ec);
         return;
     }
     if (!conn_->is_open()){
+        if (logger_) logger_->e("term 7f");
         terminate(asio::error::not_connected);
         return;
     }
@@ -906,6 +921,7 @@ void
 Request::handle_response(const asio::error_code& ec, size_t n_bytes)
 {
     if (ec && ec != asio::error::eof){
+        if (logger_) logger_->e("term fds7");
         terminate(ec);
         return;
     }
@@ -916,6 +932,7 @@ Request::handle_response(const asio::error_code& ec, size_t n_bytes)
             logger_->e("Error parsing HTTP: %zu %s %s", ret,
                 http_errno_name(HTTP_PARSER_ERRNO(parser_)),
                 http_errno_description(HTTP_PARSER_ERRNO(parser_)));
+        if (logger_) logger_->e("term fsdfds7");
         terminate(asio::error::basic_errors::broken_pipe);
         return;
     }
@@ -941,6 +958,7 @@ Request::onBody(const char* at, size_t length)
 
 void
 Request::onComplete() {
+    if (logger_) logger_->e("termfds 7");
     terminate(asio::error::eof);
 }
 

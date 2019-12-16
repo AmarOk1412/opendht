@@ -450,7 +450,7 @@ DhtProxyClient::buildRequest(const std::string& target)
     auto resolver = resolver_;
     if (not resolver)
         resolver = std::make_shared<http::Resolver>(httpContext_, proxyUrl_, logger_);
-    auto request = target.empty() 
+    auto request = target.empty()
         ? std::make_shared<http::Request>(httpContext_, resolver)
         : std::make_shared<http::Request>(httpContext_, resolver, target);
     if (serverCertificate_)
@@ -598,7 +598,7 @@ DhtProxyClient::queryProxyInfo(std::shared_ptr<InfoState> infoState, sa_family_t
     try {
         auto request = std::make_shared<http::Request>(httpContext_, resolver, family);
         auto reqid = request->id();
-        request->set_method(restinio::http_method_get()); 
+        request->set_method(restinio::http_method_get());
         setHeaderFields(*request);
         request->add_on_done_callback([this, reqid, family, infoState] (const http::Response& response){
             if (infoState->cancel.load())
@@ -718,6 +718,8 @@ size_t
 DhtProxyClient::listen(const InfoHash& key, ValueCallback cb, Value::Filter filter, Where where)
 {
     if (logger_)
+        logger_->e("@@@ DhtProxyClient::listen %s", key.toString().c_str());
+    if (logger_)
         logger_->d("[proxy:client] [listen] [search %s]", key.to_c_str());
     if (isDestroying_)
         return 0;
@@ -779,19 +781,26 @@ DhtProxyClient::listen(const InfoHash& key, ValueCallback cb, Value::Filter filt
         restinio::http_request_header_t header;
         if (deviceKey_.empty()){ // listen
             method = ListenMethod::LISTEN;
-#ifdef OPENDHT_PROXY_HTTP_PARSER_FORK
+#if false
             header.method(restinio::method_listen);
             header.request_target("/" + key.toString());
+            if (logger_) logger_->e("@@@ SET METHOD TO LISTEN");
 #else
             header.method(restinio::http_method_get());
             header.request_target("/key/" + key.toString() + "/listen");
+            if (logger_) logger_->e("@@@ SET METHOD TO LISTEN 2");
 #endif
         }
         else {
+            if (logger_) logger_->e("@@@ SET METHOD TO SUBSCRIBE");
             method = ListenMethod::SUBSCRIBE;
             header.method(restinio::http_method_subscribe());
             header.request_target("/" + key.toString());
         }
+
+        if (logger_)
+            logger_->e("@@@ deviceKey: %s", deviceKey_.c_str());
+
         sendListen(header, l->second.cb, opstate, l->second, method);
         return token;
     });
@@ -907,7 +916,7 @@ DhtProxyClient::handleExpireListener(const asio::error_code &ec, const InfoHash&
             }
             catch (const std::exception &e){
                 if (logger_)
-                     logger_->e("[proxy:client] [unsubscribe %s] failed: %s", key.to_c_str(), e.what());
+                    logger_->e("[proxy:client] [unsubscribe %s] failed: %s", key.to_c_str(), e.what());
             }
         } else {
             // stop the request
@@ -951,7 +960,9 @@ DhtProxyClient::sendListen(const restinio::http_request_header_t header,
         request->set_body(body);
 #endif
         auto rxBuf = std::make_shared<LineSplit>();
-        request->add_on_body_callback([this, reqid, opstate, rxBuf, cb](const char* at, size_t length){
+        request->add_on_body_callback([this, request, reqid, opstate, rxBuf, cb](const char* at, size_t length){
+            if (logger_) logger_->e("@@@ sendListen: %s", request->to_string().c_str());
+
             try {
                 auto& b = *rxBuf;
                 b.append(at, length);
@@ -1102,6 +1113,7 @@ DhtProxyClient::restartListeners()
             header.method(restinio::http_method_get());
             header.request_target("/key/" + search.first.toString() + "/listen");
 #endif
+            if (logger_) logger_->e("@@@ RELISTEN");
             sendListen(header, cb, opstate, listener, ListenMethod::LISTEN);
         }
     }

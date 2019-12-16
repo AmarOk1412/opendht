@@ -659,6 +659,7 @@ DhtRunner::query(const InfoHash& hash, QueryCallback cb, DoneCallback done_cb, Q
 std::future<size_t>
 DhtRunner::listen(InfoHash hash, ValueCallback vcb, Value::Filter f, Where w)
 {
+    if (logger_) logger_->e("@@@LISTEN");
     auto ret_token = std::make_shared<std::promise<size_t>>();
     if (running != State::Running) {
         ret_token->set_value(0);
@@ -680,6 +681,8 @@ DhtRunner::listen(InfoHash hash, ValueCallback vcb, Value::Filter f, Where w)
             return true;
         };
         if (auto token = dht.listen(hash, listener.gcb, listener.f, listener.w)) {
+            if (logger_ && use_proxy) logger_->e("@@@use proxy:!");
+            if (logger_ && !use_proxy) logger_->e("@@@ not use proxy:!");
             if (use_proxy)  listener.tokenProxyDht = token;
             else            listener.tokenClassicDht = token;
         }

@@ -60,6 +60,9 @@ public:
     void setHeaderFields(http::Request& request);
 
     virtual void setPushNotificationToken(const std::string& token) override {
+        if (logger_) {
+            logger_->e("@@@ SET DEVICE TOKEN: %s", token.c_str());
+        }
 #ifdef OPENDHT_PUSH_NOTIFICATIONS
         deviceKey_ = token;
 #else

@@ -561,6 +561,8 @@ DhtProxyServer::listen(restinio::request_handle_t request,
     if (!infoHash)
         infoHash = InfoHash::get(params["hash"].to_string());
 
+    std::cout << "LISTEN" << infoHash.toString() << std::endl;
+
     if (!dht_){
         auto response = initHttpResponse(
             request->create_response(restinio::status_service_unavailable()));
@@ -628,6 +630,7 @@ DhtProxyServer::subscribe(restinio::request_handle_t request,
             return response.done();
         }
         auto pushToken = root["key"].asString();
+
         if (pushToken.empty()){
             auto response = initHttpResponse(
                 request->create_response(restinio::status_bad_request()));
@@ -637,6 +640,7 @@ DhtProxyServer::subscribe(restinio::request_handle_t request,
         auto platform = root["platform"].asString();
         auto isAndroid = platform == "android";
         auto clientId = root.isMember("client_id") ? root["client_id"].asString() : std::string();
+        std::cout << "SUBSCRIBE " << infoHash.toString() << " WITH CLIENT ID " << clientId <<  std::endl;
 
         if (logger_)
             logger_->d("[proxy:server] [subscribe %s] [client %s]", infoHash.toString().c_str(), clientId.c_str());
@@ -694,6 +698,7 @@ DhtProxyServer::subscribe(restinio::request_handle_t request,
                 Json::Value json;
                 json["key"] = infoHash.toString();
                 json["to"] = clientId;
+                std::cout << "SEND VALUE TO: " << clientId << " - expired: " << expired << std::endl;
                 if (expired and values.size() < 2){
                     std::stringstream ss;
                     for(size_t i = 0; i < values.size(); ++i){
@@ -773,6 +778,7 @@ DhtProxyServer::unsubscribe(restinio::request_handle_t request,
         if (pushToken.empty())
             return restinio::request_handling_status_t::rejected;
         auto clientId = root["client_id"].asString();
+        std::cout << "UNSUBSCRIBE " << infoHash.toString() << " WITH CLIENT ID " << clientId <<  std::endl;
 
         handleCancelPushListen(asio::error_code() /*success*/, pushToken, infoHash, clientId);
         auto response = initHttpResponse(request->create_response());
@@ -798,6 +804,7 @@ DhtProxyServer::handleNotifyPushListenExpire(const asio::error_code &ec, const s
     }
     if (logger_)
         logger_->d("[proxy:server] [subscribe] sending put refresh to %s token", pushToken.c_str());
+    std::cout << "PUSH LISTEN EXPIRED FOR " << json["to"] << std::endl;
     sendPushNotification(pushToken, std::move(json), isAndroid);
 }
 
@@ -842,6 +849,7 @@ DhtProxyServer::handleCancelPushListen(const asio::error_code &ec, const std::st
 void
 DhtProxyServer::sendPushNotification(const std::string& token, Json::Value&& json, bool isAndroid)
 {
+    std::cout << "send push notification" << std::endl;
     if (pushServer_.empty())
         return;
 
